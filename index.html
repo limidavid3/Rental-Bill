@@ -2,7 +2,13 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="租金帳單">
+<meta name="theme-color" content="#FAF6EC">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>套房租金帳單試算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -777,13 +783,33 @@ async function captureCanvas(){
   });
 }
 
+// iPad / iPhone 主畫面 App 模式下,直接下載常沒反應,所以優先用「分享」選單
+async function deliverFile(blob, filename){
+  const file = new File([blob], filename, {type: blob.type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file]});
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return; // 使用者自己取消
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+function exportName(ext){
+  return `租金帳單_${roomSel.value}_${$('periodStart').value || todayStr}.${ext}`;
+}
+
 document.getElementById('btnJpg').addEventListener('click', async ()=>{
   const canvas = await captureCanvas();
-  const link = document.createElement('a');
-  const room = roomSel.value;
-  link.download = `租金帳單_${room}_${$('periodStart').value || todayStr}.jpg`;
-  link.href = canvas.toDataURL('image/jpeg', 0.95);
-  link.click();
+  canvas.toBlob(blob => deliverFile(blob, exportName('jpg')), 'image/jpeg', 0.95);
 });
 
 document.getElementById('btnPdf').addEventListener('click', async ()=>{
@@ -798,8 +824,7 @@ document.getElementById('btnPdf').addEventListener('click', async ()=>{
     format: [wMm, hMm]
   });
   pdf.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-  const room = roomSel.value;
-  pdf.save(`租金帳單_${room}_${$('periodStart').value || todayStr}.pdf`);
+  deliverFile(pdf.output('blob'), exportName('pdf'));
 });
 </script>
 </body>
