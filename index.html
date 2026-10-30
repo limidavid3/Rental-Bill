@@ -561,10 +561,14 @@ bindMeterToggle('waterUseMeter','waterMeterBox','waterDirectBox');
 function calcElec(){
   if($('elecUseMeter').checked){
     const diff = Math.max(0, num('elecCurr') - num('elecPrev'));
-    // 當期用電 1000 度以上,每度改為 6 元
-    const rate = diff >= 1000 ? 6 : num('elecRate');
-    const amt = diff * rate;
-    return {amt, detail: ` (${diff}度 × ${rate}元${diff >= 1000 ? ',用電達1000度適用' : ''})`};
+    // 累進計費:前 1000 度按單價(預設 5 元),超過 1000 度的部分每度 6 元
+    const rate = num('elecRate');
+    if(diff > 1000){
+      const over = diff - 1000;
+      const amt = 1000 * rate + over * 6;
+      return {amt, detail: ` (${diff}度:1000度×${rate}元 + ${over}度×6元)`};
+    }
+    return {amt: diff * rate, detail: ` (${diff}度 × ${rate}元)`};
   }
   return {amt: num('elecDirect'), detail: ""};
 }
